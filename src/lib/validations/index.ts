@@ -229,7 +229,7 @@ export type PaymentHistoryInput = z.infer<typeof paymentHistorySchema>;
 /**
  * Validates a US routing number (9 digits)
  */
-export const validateRoutingNumber = (routingNumber: string): boolean => {
+export function validateRoutingNumber(routingNumber: string): boolean {
   // Must be exactly 9 digits
   if (!/^\d{9}$/.test(routingNumber)) {
     return false;
@@ -244,7 +244,7 @@ export const validateRoutingNumber = (routingNumber: string): boolean => {
   ) % 10;
   
   return checksum === 0;
-};
+}
 
 /**
  * Validates an amount in cents

@@ -31,7 +31,7 @@ export function createPayeeExample(): PayeeInput {
   const result = payeeSchema.safeParse(payeeInput);
   
   if (!result.success) {
-    console.error('Validation errors:', result.error.errors);
+    console.error('Validation errors:', result.error.issues);
     throw new Error('Invalid payee data');
   }
 
@@ -58,7 +58,7 @@ export function createOneTimePaymentExample(): BillPaymentInput {
   const result = billPaymentSchema.safeParse(paymentInput);
   
   if (!result.success) {
-    console.error('Validation errors:', result.error.errors);
+    console.error('Validation errors:', result.error.issues);
     throw new Error('Invalid payment data');
   }
 
@@ -89,7 +89,7 @@ export function createRecurringPaymentExample(): BillPaymentInput {
   const result = billPaymentSchema.safeParse(paymentInput);
   
   if (!result.success) {
-    console.error('Validation errors:', result.error.errors);
+    console.error('Validation errors:', result.error.issues);
     throw new Error('Invalid payment data');
   }
 
@@ -120,7 +120,7 @@ export function createWeeklyPaymentExample(): BillPaymentInput {
   const result = billPaymentSchema.safeParse(paymentInput);
   
   if (!result.success) {
-    console.error('Validation errors:', result.error.errors);
+    console.error('Validation errors:', result.error.issues);
     throw new Error('Invalid payment data');
   }
 

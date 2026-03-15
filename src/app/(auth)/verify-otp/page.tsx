@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/firebase/client";
 
-export default function VerifyOTPPage() {
+function VerifyOTPPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const action = searchParams.get("action") || "transfer";
@@ -226,5 +226,21 @@ export default function VerifyOTPPage() {
                 </form>
             </CardContent>
         </Card>
+    );
+}
+
+export default function VerifyOTPPage() {
+    return (
+        <Suspense
+            fallback={
+                <Card className="w-full max-w-md shadow-xl border-gray-200 dark:border-gray-800">
+                    <CardContent className="py-12 text-center">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-500" />
+                    </CardContent>
+                </Card>
+            }
+        >
+            <VerifyOTPPageContent />
+        </Suspense>
     );
 }

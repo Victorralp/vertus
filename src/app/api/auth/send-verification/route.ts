@@ -1,7 +1,7 @@
 "use server";
 
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions } from "nodemailer";
 import { adminAuth } from "@/lib/firebase/admin";
 
 type Body = { email?: string };
@@ -46,16 +46,13 @@ export async function POST(req: Request) {
         process.env.SMTP_USER ||
         "Vertex Credit Union <no-reply@vertexcu.com>";
       const replyTo = process.env.SMTP_REPLY_TO || process.env.SMTP_FROM || process.env.SMTP_USER;
-      await transporter.sendMail({
+      const listUnsubscribe =
+        process.env.SMTP_UNSUBSCRIBE_URL || (replyTo ? `<mailto:${replyTo}>` : undefined);
+      const mailOptions: SendMailOptions = {
         from: fromEmail,
         to: email,
         subject: "Complete your Vertex account verification",
         replyTo,
-        headers: {
-          "List-Unsubscribe":
-            process.env.SMTP_UNSUBSCRIBE_URL ||
-            (replyTo ? `<mailto:${replyTo}>` : undefined),
-        },
         text: [
           "Welcome to Vertex Credit Union!",
           "",
@@ -109,7 +106,15 @@ export async function POST(req: Request) {
 </body>
 </html>
         `,
-      });
+      };
+
+      if (listUnsubscribe) {
+        mailOptions.headers = {
+          "List-Unsubscribe": listUnsubscribe,
+        };
+      }
+
+      await transporter.sendMail(mailOptions);
     }
 
     return NextResponse.json({ success: true });

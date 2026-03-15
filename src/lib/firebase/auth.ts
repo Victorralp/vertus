@@ -16,7 +16,7 @@ import {
 } from 'firebase/auth';
 import { auth } from './client';
 
-async function sendCustomVerificationEmail(email?: string) {
+async function sendCustomVerificationEmail(email?: string | null) {
   if (!email) return;
   try {
     await fetch('/api/auth/send-verification', {

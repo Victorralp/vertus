@@ -9,7 +9,7 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as Busboy from 'busboy';
+import Busboy = require('busboy');
 import { ImageQualityCheck } from './types';
 
 export const uploadCheck = functions.https.onRequest(async (req, res) => {
