@@ -1,0 +1,20 @@
+<svg width="320" height="80" viewBox="0 0 320 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="v-shield-dark" x1="12" y1="6" x2="68" y2="74" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34D399"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="v-glow-dark" x1="24" y1="12" x2="64" y2="68" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#10B981" stop-opacity="0.5"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M16 10h52c2.2 0 4 1.8 4 4v30c0 15.5-11.1 27.9-24.7 33.7a4.2 4.2 0 0 1-3.3 0C31.3 71.9 20 59.5 20 44V14c0-2.2 1.8-4 4-4Z" fill="#0B1220"/>
+  <path d="M24 16h36c2.2 0 4 1.8 4 4v23.5c0 11-7.7 20.5-17.6 24.3a3.6 3.6 0 0 1-2.8 0C33.3 64 26 54.5 26 43.5V20c0-2.2 1.8-4 4-4Z" fill="url(#v-glow-dark)"/>
+  <path d="M28 32.5 44 54l18-30.5" stroke="#F8FAFC" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 22v42" stroke="url(#v-shield-dark)" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+
+  <text x="90" y="33" font-family="SF Pro Display, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="26" font-weight="700" fill="#F8FAFC" letter-spacing="-0.8">Vertex</text>
+  <text x="90" y="58" font-family="SF Pro Display, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="600" fill="#38BDF8" letter-spacing="-0.4">Credit Union</text>
+</svg>

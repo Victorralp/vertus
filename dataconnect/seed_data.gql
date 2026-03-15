@@ -1,0 +1,82 @@
+mutation CreateDemoData @transaction @auth(level: USER_ANON, insecureReason: "This operation is used to populate the database with seed data. It is safe to expose to all logged in users.") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      displayName: "demouser1",
+      email: "demouser1@example.com",
+      createdAt: "2024-01-01T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      displayName: "demouser2",
+      email: "demouser2@example.com",
+      createdAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+  account_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440000",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      accountName: "Checking Account",
+      accountType: "Checking",
+      balance: 1000.00,
+      currency: "USD",
+      createdAt: "2024-01-01T00:00:00Z"
+    },
+    {
+      id: "650e8400-e29b-41d4-a716-446655440001",
+      userId: "550e8400-e29b-41d4-a716-446655440001",
+      accountName: "Savings Account",
+      accountType: "Savings",
+      balance: 5000.00,
+      currency: "USD",
+      createdAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+  category_insertMany(data: [
+    {
+      id: "750e8400-e29b-41d4-a716-446655440000",
+      categoryName: "Food",
+      categoryType: "Expense"
+    },
+    {
+      id: "750e8400-e29b-41d4-a716-446655440001",
+      categoryName: "Salary",
+      categoryType: "Income"
+    }
+  ])
+  transaction_insertMany(data: [
+    {
+      accountId: "650e8400-e29b-41d4-a716-446655440000",
+      categoryId: "750e8400-e29b-41d4-a716-446655440000",
+      amount: 50.00,
+      description: "Groceries",
+      isRecurring: false,
+      transactionDate: "2024-01-02",
+      transactionType: "Expense",
+      createdAt: "2024-01-02T00:00:00Z"
+    },
+    {
+      accountId: "650e8400-e29b-41d4-a716-446655440001",
+      categoryId: "750e8400-e29b-41d4-a716-446655440001",
+      amount: 5000.00,
+      description: "Paycheck",
+      isRecurring: true,
+      transactionDate: "2024-01-05",
+      transactionType: "Income",
+      createdAt: "2024-01-05T00:00:00Z"
+    }
+  ])
+  budget_insertMany(data: [
+    {
+      categoryId: "750e8400-e29b-41d4-a716-446655440000",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      amount: 500.00,
+      budgetName: "Monthly Food Budget",
+      description: "Budget for food expenses",
+      endDate: "2024-02-01",
+      startDate: "2024-01-01",
+      createdAt: "2024-01-01T00:00:00Z"
+    }
+  ])
+}

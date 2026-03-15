@@ -1,0 +1,41 @@
+mutation CreateNewTransaction($accountId: UUID!, $categoryId: UUID, $amount: Float!, $description: String!, $isRecurring: Boolean, $transactionDate: Date!, $transactionType: String!) @auth(level: USER) {
+  transaction_insert(data: {
+    accountId: $accountId,
+    categoryId: $categoryId,
+    amount: $amount,
+    description: $description,
+    isRecurring: $isRecurring,
+    transactionDate: $transactionDate,
+    transactionType: $transactionType
+  })
+}
+
+query GetUserAccounts($userId: UUID!) @auth(level: USER) {
+  accounts(where: {userId: {eq: $userId}}) {
+    id
+    accountName
+    accountNumber
+    accountType
+    balance
+    bankName
+    createdAt
+    currency
+  }
+}
+
+mutation UpdateBudgetAmount($id: UUID!, $amount: Float!) @auth(level: USER) {
+  budget_update(key: {id: $id}, data: {amount: $amount})
+}
+
+query ListTransactionsByCategoryAndDate($categoryId: UUID!, $startDate: Date!, $endDate: Date!) @auth(level: USER) {
+  transactions(where: {categoryId: {eq: $categoryId}, transactionDate: {ge: $startDate, le: $endDate}}) {
+    id
+    accountId
+    amount
+    createdAt
+    description
+    isRecurring
+    transactionDate
+    transactionType
+  }
+}

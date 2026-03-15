@@ -1,0 +1,17 @@
+# Vertex Credit Union - Robots.txt
+
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow sensitive areas
+Disallow: /app/
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /verify-otp
+
+# Sitemap
+Sitemap: https://vertexcu.com/sitemap.xml
