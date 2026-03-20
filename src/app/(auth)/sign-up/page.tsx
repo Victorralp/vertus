@@ -3,14 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserPlus, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { UserPlus, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, CheckCircle2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase/client";
+import { auth } from "@/lib/firebase/client";
 
 const passwordRequirements = [
     { regex: /.{8,}/, label: "At least 8 characters" },
@@ -19,10 +18,45 @@ const passwordRequirements = [
     { regex: /[0-9]/, label: "One number" },
 ];
 
+function formatSsn(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 9);
+
+    if (digits.length <= 3) {
+        return digits;
+    }
+
+    if (digits.length <= 5) {
+        return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    }
+
+    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
+async function completeProfileSetup(idToken: string, payload: { email: string; name: string; ssn: string }) {
+    const response = await fetch("/api/auth/complete-profile", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Failed to complete your account setup.");
+    }
+}
+
 export default function SignUpPage() {
     const router = useRouter();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
+    const [ssn, setSsn] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -36,10 +70,17 @@ export default function SignUpPage() {
 
     const allPasswordRequirementsMet = passwordChecks.every(check => check.passed);
     const passwordsMatch = password === confirmPassword && confirmPassword !== "";
+    const normalizedSsn = ssn.replace(/\D/g, "");
+    const isSsnValid = normalizedSsn.length === 9;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+
+        if (!isSsnValid) {
+            setError("Please enter a valid 9-digit SSN");
+            return;
+        }
 
         if (!allPasswordRequirementsMet) {
             setError("Password does not meet all requirements");
@@ -56,68 +97,59 @@ export default function SignUpPage() {
         try {
             // Create user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const userId = userCredential.user.uid;
 
             try {
                 // Update profile with name
                 await updateProfile(userCredential.user, { displayName: name });
+            } catch (profileError: unknown) {
+                console.error("Profile update error:", profileError);
+            }
 
-                // Create user document in Firestore
+            const idToken = await userCredential.user.getIdToken();
+
+            // Persist public profile data and encrypted SSN server-side
+            try {
+                await completeProfileSetup(idToken, {
+                    email,
+                    name,
+                    ssn: normalizedSsn,
+                });
+            } catch (profileSetupError: unknown) {
+                console.error("Profile setup error:", profileSetupError);
+
+                // Attempt cleanup: delete the Firebase Auth user
                 try {
-                    await setDoc(doc(db, "users", userId), {
-                        uid: userId,
-                        email: email,
-                        name: name,
-                        role: "user",
-                        createdAt: serverTimestamp(),
-                        lastLoginAt: null,
-                        security: {
-                            emailVerified: false,
-                            mfaEnabled: false,
-                            totpEnabled: false,
-                        },
-                    });
-                } catch (firestoreError: any) {
-                    console.error("Firestore write error:", firestoreError);
-                    
-                    // Attempt cleanup: delete the Firebase Auth user
-                    try {
-                        await userCredential.user.delete();
-                        console.log("Successfully cleaned up Firebase Auth user after Firestore failure");
-                    } catch (cleanupError: any) {
-                        console.error("Failed to cleanup Firebase Auth user:", cleanupError);
-                        setError("Account created but setup incomplete. Please contact support with error code: FS_CLEANUP_FAILED");
-                        setLoading(false);
-                        return;
-                    }
-                    
-                    throw new Error("Failed to create your account. Please try again.");
+                    await userCredential.user.delete();
+                    console.log("Successfully cleaned up Firebase Auth user after profile setup failure");
+                } catch (cleanupError: unknown) {
+                    console.error("Failed to cleanup Firebase Auth user:", cleanupError);
+                    setError("Account created but setup incomplete. Please contact support with error code: PROFILE_CLEANUP_FAILED");
+                    setLoading(false);
+                    return;
                 }
 
-                // Fire-and-forget custom verification email (do not block UX)
-                (async () => {
-                    try {
-                        const controller = new AbortController();
-                        const timer = setTimeout(() => controller.abort(), 5000);
-                        await fetch("/api/auth/send-verification", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ email }),
-                            signal: controller.signal,
-                        });
-                        clearTimeout(timer);
-                    } catch (emailError: any) {
-                        console.warn("Verification email send skipped:", emailError?.message || emailError);
-                    }
-                })();
-
-                // Redirect to verification page
-                router.push("/verify-email");
-            } catch (profileError: any) {
-                console.error("Profile update error:", profileError);
-                // Profile update failure is not critical, continue
-                router.push("/verify-email");
+                throw new Error("Failed to securely save your account details. Please try again.");
             }
+
+            // Fire-and-forget custom verification email (do not block UX)
+            (async () => {
+                try {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), 5000);
+                    await fetch("/api/auth/send-verification", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email }),
+                        signal: controller.signal,
+                    });
+                    clearTimeout(timer);
+                } catch (emailError: unknown) {
+                    console.warn("Verification email send skipped:", getErrorMessage(emailError, "Unknown error"));
+                }
+            })();
+
+            // Redirect to verification page
+            router.push("/verify-email");
         } catch (err: unknown) {
             console.error("Sign-up error:", err);
             const errorMessage = err instanceof Error ? err.message : "Failed to create account";
@@ -189,6 +221,38 @@ export default function SignUpPage() {
                         </div>
                     </div>
 
+                    <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-800 dark:bg-gray-900/60">
+                        <div className="mb-3">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">Identity Verification</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                We use your Social Security Number to verify your identity and secure your account.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="ssn">Social Security Number</Label>
+                            <div className="relative">
+                                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                    id="ssn"
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="off"
+                                    placeholder="123-45-6789"
+                                    className="pl-10"
+                                    value={ssn}
+                                    onChange={(e) => setSsn(formatSsn(e.target.value))}
+                                    required
+                                    disabled={loading}
+                                    maxLength={11}
+                                />
+                            </div>
+                            <p className={`text-xs ${isSsnValid || !ssn ? "text-gray-500 dark:text-gray-400" : "text-red-500"}`}>
+                                {isSsnValid || !ssn ? "Enter your 9-digit SSN." : "SSN must be 9 digits."}
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="space-y-2">
                         <Label htmlFor="password">Password</Label>
                         <div className="relative">
@@ -248,7 +312,7 @@ export default function SignUpPage() {
                     <Button
                         type="submit"
                         className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
-                        disabled={loading || !allPasswordRequirementsMet || !passwordsMatch}
+                        disabled={loading || !isSsnValid || !allPasswordRequirementsMet || !passwordsMatch}
                     >
                         {loading ? (
                             <>

@@ -8,83 +8,49 @@ import {
     ArrowDownRight,
     Download,
     Share2,
-    MoreHorizontal,
     Wallet,
-    TrendingUp,
     Eye,
     EyeOff,
-    CalendarDays
+    CalendarDays,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-
-// Account data
-const accountsData: Record<string, {
-    id: string;
-    name: string;
-    type: string;
-    balance: number;
-    number: string;
-    routingNumber: string;
-    transactions: Array<{
-        id: string;
-        description: string;
-        amount: number;
-        date: string;
-        type: string;
-        category: string;
-    }>;
-}> = {
-    acc1: {
-        id: "acc1",
-        name: "Primary Checking",
-        type: "checking",
-        balance: 12458.32,
-        number: "1234567894521",
-        routingNumber: "021000021",
-        transactions: [
-            { id: "t1", description: "Netflix Subscription", amount: -15.99, date: "Jan 27, 2026", type: "debit", category: "Entertainment" },
-            { id: "t2", description: "Salary Deposit", amount: 4500.00, date: "Jan 26, 2026", type: "credit", category: "Income" },
-            { id: "t3", description: "Amazon Purchase", amount: -89.99, date: "Jan 25, 2026", type: "debit", category: "Shopping" },
-            { id: "t4", description: "Uber Ride", amount: -23.50, date: "Jan 24, 2026", type: "debit", category: "Transport" },
-            { id: "t5", description: "Transfer from Savings", amount: 500.00, date: "Jan 23, 2026", type: "credit", category: "Transfer" },
-        ]
-    },
-    acc2: {
-        id: "acc2",
-        name: "High-Yield Savings",
-        type: "savings",
-        balance: 45230.00,
-        number: "1234567897832",
-        routingNumber: "021000021",
-        transactions: [
-            { id: "t1", description: "Interest Payment", amount: 156.78, date: "Jan 25, 2026", type: "credit", category: "Interest" },
-            { id: "t2", description: "Transfer to Checking", amount: -500.00, date: "Jan 23, 2026", type: "debit", category: "Transfer" },
-            { id: "t3", description: "Deposit", amount: 2000.00, date: "Jan 15, 2026", type: "credit", category: "Deposit" },
-        ]
-    },
-    acc3: {
-        id: "acc3",
-        name: "Business Account",
-        type: "business",
-        balance: 89750.45,
-        number: "1234567899156",
-        routingNumber: "021000021",
-        transactions: [
-            { id: "t1", description: "Client Payment - ABC Corp", amount: 15000.00, date: "Jan 27, 2026", type: "credit", category: "Income" },
-            { id: "t2", description: "Office Supplies", amount: -234.56, date: "Jan 26, 2026", type: "debit", category: "Expense" },
-            { id: "t3", description: "Software Subscription", amount: -99.00, date: "Jan 25, 2026", type: "debit", category: "Expense" },
-        ]
-    }
-};
+import { useMemo, useState } from "react";
+import { useMockBankingData } from "@/hooks/use-mock-banking-data";
+import { PageLoadingState } from "@/components/shared/page-loading-state";
 
 export default function AccountDetailPage() {
     const params = useParams();
     const accountId = params.id as string;
     const [showDetails, setShowDetails] = useState(true);
+    const { accountsById, loading, transactionsByAccount } = useMockBankingData();
 
-    const account = accountsData[accountId];
+    const account = accountsById[accountId];
+    const accountTransactions = useMemo(
+        () =>
+            (transactionsByAccount[accountId] ?? [])
+                .slice()
+                .sort((left, right) => right.date.getTime() - left.date.getTime()),
+        [accountId, transactionsByAccount]
+    );
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+        }).format(amount);
+    };
+
+    const formatDate = (date: Date) =>
+        date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        });
+
+    if (loading) {
+        return <PageLoadingState title="Loading account details" />;
+    }
 
     if (!account) {
         return (
@@ -100,21 +66,9 @@ export default function AccountDetailPage() {
         );
     }
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount);
-    };
-
-    const maskNumber = (num: string) => {
-        return '••••' + num.slice(-4);
-    };
-
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/app/accounts">
                         <Button variant="ghost" size="icon">
@@ -127,18 +81,19 @@ export default function AccountDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => window.print()}>
                         <Download className="h-4 w-4 mr-1" />
                         Export
                     </Button>
-                    <Button variant="outline" size="sm">
-                        <Share2 className="h-4 w-4 mr-1" />
-                        Share
+                    <Button asChild variant="outline" size="sm">
+                        <Link href="/app/transfers">
+                            <Share2 className="h-4 w-4 mr-1" />
+                            Transfer
+                        </Link>
                     </Button>
                 </div>
             </div>
 
-            {/* Balance Card */}
             <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -146,6 +101,7 @@ export default function AccountDetailPage() {
                             <Wallet className="h-6 w-6" />
                         </div>
                         <button
+                            type="button"
                             onClick={() => setShowDetails(!showDetails)}
                             className="p-2 rounded-full hover:bg-white/10"
                         >
@@ -154,22 +110,21 @@ export default function AccountDetailPage() {
                     </div>
                     <p className="text-emerald-100 text-sm">Available Balance</p>
                     <p className="text-4xl font-bold mt-1">
-                        {showDetails ? formatCurrency(account.balance) : '••••••••'}
+                        {showDetails ? formatCurrency(account.balance) : "••••••••"}
                     </p>
-                    <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-2 gap-4 text-sm">
+                    <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                         <div>
                             <p className="text-emerald-100">Account Number</p>
-                            <p className="font-medium">{showDetails ? account.number : maskNumber(account.number)}</p>
+                            <p className="font-medium">{showDetails ? account.fullNumber : account.number}</p>
                         </div>
                         <div>
                             <p className="text-emerald-100">Routing Number</p>
-                            <p className="font-medium">{showDetails ? account.routingNumber : '•••••••••'}</p>
+                            <p className="font-medium">{showDetails ? account.routingNumber : "•••••••••"}</p>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Quick Actions */}
             <div className="flex gap-3">
                 <Link href="/app/transfers" className="flex-1">
                     <Button className="w-full bg-gradient-to-r from-emerald-500 to-teal-600">
@@ -177,49 +132,84 @@ export default function AccountDetailPage() {
                         Transfer
                     </Button>
                 </Link>
-                <Button variant="outline" className="flex-1">
+                <Button variant="outline" className="flex-1" onClick={() => window.print()}>
                     <Download className="h-4 w-4 mr-2" />
                     Statement
                 </Button>
             </div>
 
-            {/* Transactions */}
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Transaction History</CardTitle>
-                    <Button variant="ghost" size="sm">
-                        <CalendarDays className="h-4 w-4 mr-1" />
-                        Filter
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {account.transactions.map((tx) => (
-                            <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                                <div className="flex items-center gap-3">
-                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${tx.type === 'credit'
-                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
-                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg">Transaction History</CardTitle>
+                        <Button asChild variant="ghost" size="sm">
+                            <Link href="/app/transactions">
+                                <CalendarDays className="h-4 w-4 mr-1" />
+                                Open Ledger
+                            </Link>
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {accountTransactions.map((tx) => (
+                                <Link key={tx.id} href={`/app/transactions/${tx.id}`} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                                            tx.type === "credit"
+                                                ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600"
+                                                : "bg-gray-100 dark:bg-gray-800 text-gray-500"
                                         }`}>
-                                        {tx.type === 'credit'
-                                            ? <ArrowDownRight className="h-5 w-5" />
-                                            : <ArrowUpRight className="h-5 w-5" />
-                                        }
+                                            {tx.type === "credit"
+                                                ? <ArrowDownRight className="h-5 w-5" />
+                                                : <ArrowUpRight className="h-5 w-5" />
+                                            }
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-900 dark:text-white">{tx.description}</p>
+                                            <p className="text-sm text-gray-500">{formatDate(tx.date)} • {tx.category}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">{tx.description}</p>
-                                        <p className="text-sm text-gray-500">{tx.date} • {tx.category}</p>
-                                    </div>
-                                </div>
-                                <span className={`font-semibold ${tx.type === 'credit' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'
-                                    }`}>
-                                    {tx.type === 'credit' ? '+' : ''}{formatCurrency(tx.amount)}
-                                </span>
+                                    <span className={`font-semibold ${tx.type === "credit" ? "text-emerald-600" : "text-gray-900 dark:text-white"}`}>
+                                        {tx.type === "credit" ? "+" : "-"}{formatCurrency(tx.amount)}
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Account Snapshot</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="rounded-2xl bg-gray-50 p-4 dark:bg-gray-900/60">
+                            <p className="text-xs uppercase tracking-[0.2em]">Available</p>
+                            <p className="mt-2 text-xl font-semibold text-gray-900 dark:text-white">
+                                {formatCurrency(account.availableBalance ?? account.balance)}
+                            </p>
+                        </div>
+
+                        {typeof account.pendingBalance === "number" && (
+                            <div className="rounded-2xl bg-gray-50 p-4 dark:bg-gray-900/60">
+                                <p className="text-xs uppercase tracking-[0.2em]">Pending</p>
+                                <p className="mt-2 text-xl font-semibold text-gray-900 dark:text-white">
+                                    {formatCurrency(account.pendingBalance)}
+                                </p>
                             </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+                        )}
+
+                        {account.interestRate && (
+                            <div className="rounded-2xl bg-gray-50 p-4 dark:bg-gray-900/60">
+                                <p className="text-xs uppercase tracking-[0.2em]">Interest Rate</p>
+                                <p className="mt-2 text-xl font-semibold text-gray-900 dark:text-white">
+                                    {account.interestRate}
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

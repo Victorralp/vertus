@@ -21,6 +21,7 @@ export const signUpSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters'),
+  ssn: z.string().regex(/^(?:\d{9}|\d{3}-\d{2}-\d{4})$/, 'SSN must be exactly 9 digits'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -266,6 +267,13 @@ export const validateAccountNumber = (accountNumber: string): boolean => {
  */
 export const validateLast4 = (last4: string): boolean => {
   return /^\d{4}$/.test(last4);
+};
+
+/**
+ * Validates a Social Security Number (9 digits)
+ */
+export const validateSSN = (ssn: string): boolean => {
+  return /^\d{9}$/.test(ssn.replace(/\D/g, ''));
 };
 
 /**

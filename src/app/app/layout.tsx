@@ -19,7 +19,8 @@ import {
     Landmark,
     FileText,
     Gift,
-    HelpCircle
+    HelpCircle,
+    Clock3
 } from "lucide-react";
 import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
@@ -32,6 +33,7 @@ const navigation = [
         section: "MAIN",
         items: [
             { name: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
+            { name: "Recent Activity", href: "/app/recent-activity", icon: Clock3 },
             { name: "Transactions", href: "/app/transactions", icon: Receipt },
             { name: "Cards", href: "/app/cards", icon: CreditCard },
         ]

@@ -1,0 +1,14 @@
+import { LoadingScreen } from "@/components/shared/loading-screen";
+
+export default function AppLoading() {
+  return (
+    <LoadingScreen
+      title="Preparing your banking workspace"
+      statusMessages={[
+        "Checking your secure access",
+        "Loading accounts, cards, and transactions",
+        "Finishing your dashboard session",
+      ]}
+    />
+  );
+}
