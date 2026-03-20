@@ -24,6 +24,11 @@ export interface User {
     totpEnabled: boolean;
     totpSecret?: string;          // Encrypted TOTP secret
   };
+  identity?: {
+    ssnLast4: string;
+    ssnMasked: string;
+    ssnProvidedAt: Timestamp;
+  };
 }
 
 /**

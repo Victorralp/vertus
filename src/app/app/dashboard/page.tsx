@@ -1,311 +1,305 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
     Wallet,
     ArrowUpRight,
     ArrowDownRight,
     CreditCard,
-    TrendingUp,
-    ArrowRight,
     Eye,
     EyeOff,
-    Clock,
+    Clock3,
     ChevronRight,
-    Loader2,
-    AlertCircle
+    Landmark,
+    ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "@/lib/firebase/client";
-
-interface AccountDisplay {
-    accountId: string;
-    type: string;
-    balance: number;
-    accountNumber: string;
-}
-
-interface TransactionDisplay {
-    txId: string;
-    description: string;
-    amount: number;
-    type: string;
-    createdAt: Date;
-}
-
-// Mock data - matches the accounts page
-const mockAccounts: AccountDisplay[] = [
-    {
-        accountId: "acc1",
-        type: "checking",
-        balance: 1245832, // in cents
-        accountNumber: "****4521",
-    },
-    {
-        accountId: "acc2",
-        type: "savings",
-        balance: 4523000, // in cents
-        accountNumber: "****7832",
-    },
-    {
-        accountId: "acc3",
-        type: "business",
-        balance: 8975045, // in cents
-        accountNumber: "****9156",
-    },
-];
-
-const mockTransactions: TransactionDisplay[] = [
-    {
-        txId: "tx1",
-        description: "Starbucks Coffee",
-        amount: 545, // in cents
-        type: "debit",
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    },
-    {
-        txId: "tx2",
-        description: "Salary Deposit",
-        amount: 450000, // in cents
-        type: "credit",
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    },
-    {
-        txId: "tx3",
-        description: "Amazon Purchase",
-        amount: 8999, // in cents
-        type: "debit",
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-    },
-    {
-        txId: "tx4",
-        description: "Netflix Subscription",
-        amount: 1599, // in cents
-        type: "debit",
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-    },
-    {
-        txId: "tx5",
-        description: "Freelance Payment",
-        amount: 125000, // in cents
-        type: "credit",
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
-    },
-];
+import { useMockBankingData } from "@/hooks/use-mock-banking-data";
+import { PageLoadingState } from "@/components/shared/page-loading-state";
 
 const quickActions = [
-    { name: "Transfer", href: "/app/transfers", icon: ArrowUpRight },
-    { name: "Accounts", href: "/app/accounts", icon: Wallet },
-    { name: "Cards", href: "/app/cards", icon: CreditCard },
-];
+    { name: "Transfer", href: "/app/transfers", icon: ArrowUpRight, description: "Move money fast" },
+    { name: "Accounts", href: "/app/accounts", icon: Wallet, description: "Review balances" },
+    { name: "Cards", href: "/app/cards", icon: CreditCard, description: "Manage spending" },
+    { name: "Loans", href: "/app/loans", icon: Landmark, description: "Explore offers" },
+] as const;
+
+function formatCurrency(amount: number) {
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+    }).format(amount);
+}
+
+function formatRelative(date: Date) {
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        return "Today";
+    }
+
+    if (diffDays === 1) {
+        return "Yesterday";
+    }
+
+    if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    }
+
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 export default function DashboardPage() {
-    const [user, setUser] = useState<User | null>(null);
     const [showBalance, setShowBalance] = useState(true);
-    const [accounts, setAccounts] = useState<AccountDisplay[]>([]);
-    const [transactions, setTransactions] = useState<TransactionDisplay[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { accounts, loading, transactions, user } = useMockBankingData();
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            if (currentUser) {
-                // Simulate loading delay
-                setTimeout(() => {
-                    setAccounts(mockAccounts);
-                    setTransactions(mockTransactions);
-                    setLoading(false);
-                }, 500);
-            } else {
-                setLoading(false);
-            }
-        });
-        return () => unsubscribe();
-    }, []);
+    const totalBalance = useMemo(
+        () => accounts.reduce((sum, account) => sum + account.balance, 0),
+        [accounts]
+    );
 
-    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const currentYear = new Date().getFullYear();
 
-    const formatCurrency = (amount: number) => {
-        // Convert from cents to dollars
-        const dollars = amount / 100;
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(dollars);
-    };
+    const thisYearTransactions = useMemo(
+        () => transactions.filter((transaction) => transaction.date.getFullYear() === currentYear),
+        [currentYear, transactions]
+    );
 
-    const formatDate = (date: Date) => {
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - date.getTime());
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const incomeThisYear = useMemo(
+        () =>
+            thisYearTransactions
+                .filter((transaction) => transaction.type === "credit")
+                .reduce((sum, transaction) => sum + transaction.amount, 0),
+        [thisYearTransactions]
+    );
 
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
+    const spendingThisYear = useMemo(
+        () =>
+            thisYearTransactions
+                .filter((transaction) => transaction.type === "debit")
+                .reduce((sum, transaction) => sum + transaction.amount, 0),
+        [thisYearTransactions]
+    );
 
-    const getAccountName = (type: string) => {
-        return type === 'checking' ? 'Checking Account' : 'Savings Account';
-    };
+    const recentTransactions = useMemo(
+        () =>
+            transactions
+                .slice()
+                .sort((left, right) => right.date.getTime() - left.date.getTime())
+                .slice(0, 5),
+        [transactions]
+    );
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-emerald-500 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">Loading your dashboard...</p>
-                </div>
-            </div>
-        );
+        return <PageLoadingState title="Loading your dashboard" />;
     }
 
     return (
-        <div className="space-y-6">
-            {/* Welcome */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Welcome back, {user?.displayName?.split(' ')[0] || 'there'}!
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400">
-                    Here's an overview of your accounts
-                </p>
-            </div>
-
-            {/* Total Balance Card */}
-            <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <CardHeader className="pb-2">
-                    <CardDescription className="text-emerald-100">Total Balance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="text-4xl font-bold">
-                                {showBalance ? formatCurrency(totalBalance) : '••••••••'}
-                            </span>
-                            <button
-                                onClick={() => setShowBalance(!showBalance)}
-                                className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
-                            >
-                                {showBalance ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                            </button>
+        <div className="mx-auto max-w-6xl space-y-6">
+            <section className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(140deg,#0f172a_0%,#134e4a_48%,#ecfeff_100%)] p-6 shadow-[0_28px_90px_rgba(15,23,42,0.18)] dark:border-slate-800">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.14),transparent_32%)]" />
+                <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_360px]">
+                    <div className="min-w-0 space-y-5 text-white">
+                        <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.28em] text-cyan-100">
+                            Portfolio Overview
                         </div>
-                        {accounts.length > 0 && (
-                            <div className="flex items-center gap-1 text-emerald-100 text-sm">
-                                <TrendingUp className="h-4 w-4" />
-                                <span>{accounts.length} {accounts.length === 1 ? 'account' : 'accounts'}</span>
-                            </div>
-                        )}
-                    </div>
-                    {accounts.length === 0 && (
-                        <p className="text-emerald-100 text-sm mt-2">
-                            No accounts found. Create your first account to get started.
-                        </p>
-                    )}
-                </CardContent>
-            </Card>
+                        <div className="space-y-3">
+                            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                                Welcome back, {user?.displayName?.split(" ")[0] || "there"}
+                            </h1>
+                            <p className="max-w-2xl text-sm leading-6 text-slate-200/90 sm:text-base">
+                                Review balances, spot recent movement, and jump into the next action without digging through the rest of the app.
+                            </p>
+                        </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-3 gap-3">
-                {quickActions.map((action) => (
-                    <Link key={action.name} href={action.href}>
-                        <Card className="hover:shadow-md transition-shadow cursor-pointer group">
-                            <CardContent className="p-4 flex flex-col items-center text-center">
-                                <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-2 group-hover:scale-110 transition-transform">
-                                    <action.icon className="h-6 w-6" />
-                                </div>
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {action.name}
-                                </span>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
-            </div>
-
-            {/* Accounts & Transactions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Accounts */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg">Your Accounts</CardTitle>
-                        <Link href="/app/accounts">
-                            <Button variant="ghost" size="sm" className="text-emerald-600">
-                                View All
-                                <ChevronRight className="ml-1 h-4 w-4" />
+                        <div className="flex flex-wrap gap-3">
+                            <Button asChild className="h-11 rounded-xl bg-white text-slate-900 hover:bg-slate-100">
+                                <Link href="/app/transfers">
+                                    Transfer Money
+                                    <ChevronRight className="h-4 w-4" />
+                                </Link>
                             </Button>
-                        </Link>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {accounts.map((account) => (
-                            <Link key={account.accountId} href={`/app/accounts/${account.accountId}`}>
-                                <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
-                                            <Wallet className="h-5 w-5 text-emerald-600" />
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900 dark:text-white">{getAccountName(account.type)}</p>
-                                            <p className="text-sm text-gray-500">{account.accountNumber}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-semibold text-gray-900 dark:text-white">
-                                            {showBalance ? formatCurrency(account.balance) : '••••'}
-                                        </p>
-                                        <p className="text-xs text-gray-500 capitalize">{account.type}</p>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </CardContent>
-                </Card>
+                            <Button asChild variant="outline" className="h-11 rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                                <Link href="/app/recent-activity">
+                                    Open Recent Activity
+                                    <ChevronRight className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                        </div>
+                    </div>
 
-                {/* Recent Transactions */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg">Recent Activity</CardTitle>
-                        <Button variant="ghost" size="sm" className="text-emerald-600">
-                            <Clock className="mr-1 h-4 w-4" />
-                            History
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {transactions.length > 0 ? (
-                            transactions.map((tx) => (
-                                <div key={tx.txId} className="flex items-center justify-between py-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${tx.type === 'credit'
-                                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
-                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-                                            }`}>
-                                            {tx.type === 'credit'
-                                                ? <ArrowDownRight className="h-4 w-4" />
-                                                : <ArrowUpRight className="h-4 w-4" />
-                                            }
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900 dark:text-white text-sm">{tx.description}</p>
-                                            <p className="text-xs text-gray-500">{formatDate(tx.createdAt)}</p>
-                                        </div>
-                                    </div>
-                                    <span className={`font-semibold ${tx.type === 'credit' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'
-                                        }`}>
-                                        {tx.type === 'credit' ? '+' : ''}{formatCurrency(tx.amount)}
-                                    </span>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                                <Clock className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                <p className="text-sm">No recent transactions</p>
-                                <p className="text-xs mt-1">Your transaction history will appear here</p>
+                    <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-sm">
+                            <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/80">Total Balance</p>
+                            <div className="mt-2 flex items-center gap-3">
+                                <p className="truncate text-3xl font-semibold">
+                                    {showBalance ? formatCurrency(totalBalance) : "••••••••"}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowBalance((value) => !value)}
+                                    className="rounded-full border border-white/10 bg-white/10 p-2 transition hover:bg-white/20"
+                                >
+                                    {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
                             </div>
-                        )}
+                            <p className="mt-2 text-sm text-slate-200/80">{accounts.length} active accounts connected</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-sm">
+                            <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/80">Money In</p>
+                            <p className="mt-2 text-3xl font-semibold">{formatCurrency(incomeThisYear)}</p>
+                            <p className="mt-2 text-sm text-slate-200/80">Credits recorded in {currentYear}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-sm sm:col-span-3 xl:col-span-1">
+                            <p className="text-xs uppercase tracking-[0.22em] text-cyan-100/80">Spending</p>
+                            <p className="mt-2 text-3xl font-semibold">{formatCurrency(spendingThisYear)}</p>
+                            <p className="mt-2 text-sm text-slate-200/80">Debits recorded in {currentYear}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="space-y-6">
+                    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {quickActions.map((action) => {
+                            const Icon = action.icon;
+
+                            return (
+                                <Link key={action.name} href={action.href}>
+                                    <Card className="group h-full rounded-[26px] border-slate-200 bg-white transition hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950/40">
+                                        <CardContent className="space-y-4 p-5">
+                                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
+                                                <Icon className="h-5 w-5" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="font-semibold text-slate-900 dark:text-white">{action.name}</p>
+                                                <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">{action.description}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-300">
+                                                Open
+                                                <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            );
+                        })}
+                    </section>
+
+                    <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm dark:border-slate-800">
+                        <CardHeader className="border-b border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/50">
+                            <CardTitle>Accounts</CardTitle>
+                            <CardDescription>Balances stay synced with your activity feed</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4 p-6 md:grid-cols-2">
+                            {accounts.map((account) => (
+                                <Link key={account.id} href={`/app/accounts/${account.id}`}>
+                                    <div className="group rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-1 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950/40">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-900 dark:text-white">{account.name}</p>
+                                                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">
+                                                    {account.number}
+                                                </p>
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-emerald-500" />
+                                        </div>
+                                        <p className="mt-5 text-2xl font-semibold text-slate-900 dark:text-white">
+                                            {showBalance ? formatCurrency(account.balance) : "••••••"}
+                                        </p>
+                                        <p className="mt-2 text-sm capitalize text-slate-500 dark:text-slate-400">
+                                            {account.type} account
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm dark:border-slate-800">
+                        <CardHeader className="border-b border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/50">
+                            <CardTitle>Recent Activity</CardTitle>
+                            <CardDescription>Latest movements across your connected accounts</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 p-6">
+                            {recentTransactions.map((transaction) => {
+                                const isCredit = transaction.type === "credit";
+
+                                return (
+                                    <Link key={transaction.id} href={`/app/transactions/${transaction.id}`} className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition hover:border-emerald-200 hover:bg-emerald-50/40 dark:border-slate-800 dark:bg-slate-950/40 dark:hover:border-emerald-900/40 dark:hover:bg-slate-900/80">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                                                isCredit
+                                                    ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-300"
+                                                    : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                            }`}>
+                                                {isCredit ? <ArrowDownRight className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate font-medium text-slate-900 dark:text-white">
+                                                    {transaction.description}
+                                                </p>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                                    {formatRelative(transaction.date)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p className={`shrink-0 text-sm font-semibold ${isCredit ? "text-emerald-600 dark:text-emerald-300" : "text-slate-900 dark:text-white"}`}>
+                                            {isCredit ? "+" : "-"}
+                                            {formatCurrency(transaction.amount)}
+                                        </p>
+                                    </Link>
+                                );
+                            })}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card className="overflow-hidden rounded-[28px] border-slate-200 shadow-sm dark:border-slate-800">
+                    <CardHeader className="border-b border-slate-100 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/50">
+                        <CardTitle>Security Snapshot</CardTitle>
+                        <CardDescription>Checks that matter right now</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 p-6">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                            <div className="flex items-start gap-3">
+                                <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+                                <div>
+                                    <p className="font-medium text-slate-900 dark:text-white">Protected access</p>
+                                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                        MFA and login alerts remain active for this session.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">Portfolio spread</p>
+                            <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                                {accounts.length}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                Accounts connected across checking, savings, and business.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                            <div className="flex items-center gap-2 text-slate-900 dark:text-white">
+                                <Clock3 className="h-4 w-4 text-slate-500" />
+                                <p className="text-sm font-medium">Timeline coverage</p>
+                            </div>
+                            <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                                {transactions.length}
+                            </p>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                Transactions available across multiple years of history.
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

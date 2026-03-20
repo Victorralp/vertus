@@ -11,14 +11,33 @@ import { LoadingScreen } from "@/components/shared/loading-screen";
 export function RouteTransitionOverlay() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted) {
+      return;
+    }
+
     // Trigger overlay on route change
     setVisible(true);
-    const timeout = setTimeout(() => setVisible(false), 600); // keep brief but noticeable
+    const timeout = setTimeout(() => setVisible(false), 450);
     return () => clearTimeout(timeout);
-  }, [pathname]);
+  }, [hasMounted, pathname]);
 
   if (!visible) return null;
-  return <LoadingScreen />;
+  return (
+    <LoadingScreen
+      title="Switching views"
+      statusMessages={[
+        "Opening your next workspace",
+        "Syncing the latest account state",
+        "Almost there",
+      ]}
+      showMetrics={false}
+    />
+  );
 }

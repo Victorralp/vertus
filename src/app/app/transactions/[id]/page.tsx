@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
     ArrowLeft,
     ArrowDownRight,
@@ -11,6 +13,7 @@ import {
     Receipt,
     ShieldCheck,
     Tag,
+    Landmark,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,7 +24,8 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { mockTransactions } from "../data";
+import { useMockBankingData } from "@/hooks/use-mock-banking-data";
+import { PageLoadingState } from "@/components/shared/page-loading-state";
 
 const formatCurrency = (amount: number, currency: string) =>
     new Intl.NumberFormat("en-US", {
@@ -44,17 +48,31 @@ const formatTime = (date: Date) =>
         hour12: true,
     });
 
-export default function TransactionDetailsPage({
-    params,
-}: {
-    params: { id: string };
-}) {
-    const transaction = mockTransactions.find((item) => item.id === params.id);
+export default function TransactionDetailsPage() {
+    const params = useParams();
+    const transactionId = params.id as string;
+    const { accountsById, loading, transactions } = useMockBankingData();
+    const transaction = transactions.find((item) => item.id === transactionId);
 
-    if (!transaction) {
-        notFound();
+    if (loading) {
+        return <PageLoadingState title="Loading transaction details" />;
     }
 
+    if (!transaction) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-gray-500">Transaction not found</p>
+                <Link href="/app/transactions">
+                    <Button variant="link" className="mt-4">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to transactions
+                    </Button>
+                </Link>
+            </div>
+        );
+    }
+
+    const account = accountsById[transaction.accountId];
     const isCredit = transaction.type === "credit";
     const statusTone =
         transaction.status === "processed"
@@ -84,7 +102,7 @@ export default function TransactionDetailsPage({
                     </div>
                 </div>
 
-                <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+                <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={() => window.print()}>
                     <Download className="h-4 w-4" />
                     Download receipt
                 </Button>
@@ -114,10 +132,7 @@ export default function TransactionDetailsPage({
                                     {transaction.category}
                                 </p>
                                 <h2 className="mt-2 text-3xl font-bold">
-                                    {formatCurrency(
-                                        transaction.amount,
-                                        transaction.currency
-                                    )}
+                                    {formatCurrency(transaction.amount, transaction.currency)}
                                 </h2>
                                 <p className="mt-2 max-w-xl text-sm text-slate-200/80">
                                     {transaction.description}
@@ -205,6 +220,16 @@ export default function TransactionDetailsPage({
                                 {transaction.status}
                             </p>
                         </div>
+
+                        <div className="rounded-2xl bg-gray-50 p-4 dark:bg-gray-900/60 md:col-span-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                <Landmark className="h-4 w-4" />
+                                Account
+                            </div>
+                            <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-white">
+                                {account?.name ?? "Unknown account"} {account ? `(${account.number})` : ""}
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -233,6 +258,15 @@ export default function TransactionDetailsPage({
                             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                                 This transaction was recorded as{" "}
                                 {isCredit ? "incoming money" : "outgoing money"}.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/60">
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                                Funding account
+                            </p>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                {account?.name ?? "Unknown account"} {account ? `(${account.number})` : ""}
                             </p>
                         </div>
 
